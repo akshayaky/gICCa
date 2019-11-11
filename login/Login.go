@@ -1,4 +1,4 @@
-package main
+package login
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func getAuthToken() string { //function tp get the Auth token
+func GetAuthToken() string { //function tp get the Auth token
 
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/auth-formtoken", nil)
 	if err != nil {
@@ -42,7 +42,7 @@ func getAuthToken() string { //function tp get the Auth token
 
 }
 
-func getSessionId(tok1 string, email string, pass string) { // function to get the session id from the Auth token
+func GetSessionId(tok1 string, email string, pass string) { // function to get the session id from the Auth token
 	body := strings.NewReader(`email=` + email + `&password=` + pass + `&token=` + tok1)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/login", body)
 	if err != nil {
@@ -53,7 +53,7 @@ func getSessionId(tok1 string, email string, pass string) { // function to get t
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("error")
+		fmt.Println("Error authenticating")
 	}
 	defer resp.Body.Close()
 
@@ -68,12 +68,12 @@ func getSessionId(tok1 string, email string, pass string) { // function to get t
 		fmt.Println(session)
 
 	} else {
-		fmt.Println("error")
+		fmt.Println("Error auth")
 	}
 
 }
 
-func val(lab string) string { //function to validate the given input
+func Val(lab string) string { //function to validate the given input
 	validate := func(input string) error {
 
 		if input == "" {
@@ -95,18 +95,4 @@ func val(lab string) string { //function to validate the given input
 	}
 
 	return result
-}
-
-func main() {
-	k := "Username"
-	email := val(k)
-	k = "Password"
-	password := val(k)
-
-	tok := getAuthToken()
-	tok1 := tok[0 : len(tok)-1]
-
-	fmt.Println(tok)
-	getSessionId(string(tok1), email, password)
-
 }
