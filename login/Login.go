@@ -15,13 +15,13 @@ func GetAuthToken() string { //function tp get the Auth token
 
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/auth-formtoken", nil)
 	if err != nil {
-		fmt.Println("Error sending request(1)")
+		fmt.Println("\nError sending request(1)")
 	}
 	req.Header.Set("Content-Length", "0")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("Error sending request(2)")
+		fmt.Println("\nError sending request(2)")
 	}
 	defer resp.Body.Close()
 
@@ -36,13 +36,13 @@ func GetAuthToken() string { //function tp get the Auth token
 		//fmt.Println(token)
 		return token
 	} else {
-		fmt.Println("error")
+		fmt.Println("\nerror")
 		return "nil"
 	}
 
 }
 
-func GetSessionId(tok1 string, email string, pass string) { // function to get the session id from the Auth token
+func GetSessionId(tok1 string, email string, pass string) string { // function to get the session id from the Auth token
 	body := strings.NewReader(`email=` + email + `&password=` + pass + `&token=` + tok1)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/login", body)
 	if err != nil {
@@ -53,7 +53,7 @@ func GetSessionId(tok1 string, email string, pass string) { // function to get t
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println("Error authenticating")
+		fmt.Println("\nError authenticating")
 	}
 	defer resp.Body.Close()
 
@@ -65,10 +65,12 @@ func GetSessionId(tok1 string, email string, pass string) { // function to get t
 		bodyString := string(bodyBytes)
 		ind := strings.Index(bodyString, "session")
 		session := bodyString[ind+10 : ind+44]
-		fmt.Println(session)
+
+		return session
 
 	} else {
-		fmt.Println("Error auth")
+		fmt.Println("\nError authenticating")
+		return "nil"
 	}
 
 }
