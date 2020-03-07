@@ -1,4 +1,4 @@
-# IRC Mailing CLI Application
+# gICCA (IRC mailing CLI application)
 
 This is work in progress.
 
