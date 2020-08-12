@@ -6,7 +6,8 @@ import (
 	"net/url"
 )
 
-func SetCookie(session string) *http.Client {
+//SetCookie sets cookie(session id here) for a given method
+func SetCookie(session string, method string) *http.Client {
 	jar, _ := cookiejar.New(nil)
 
 	var cookies []*http.Cookie
@@ -21,12 +22,11 @@ func SetCookie(session string) *http.Client {
 	cookies = append(cookies, firstCookie)
 
 	// URL for cookies to remember. i.e reply when encounter this URL
-	cookieURL, _ := url.Parse("https://www.irccloud.com/chat/say")
+	cookieURL, _ := url.Parse("https://www.irccloud.com/chat/" + method)
 
 	jar.SetCookies(cookieURL, cookies)
 	client := &http.Client{
 		Jar: jar,
-		//Timeout: timeout,
 	}
 
 	return client

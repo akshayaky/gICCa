@@ -11,7 +11,7 @@ import (
 )
 
 func Reconnect(session string, cid string, ReorDis string) {
-	client := cookie.SetCookie(session)
+	client := cookie.SetCookie(session, ReorDis+"connect")
 	body := strings.NewReader(`cid=` + cid + `&session=` + session)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/"+ReorDis+"connect", body)
 	//fmt.Println(body)

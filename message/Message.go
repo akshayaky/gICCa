@@ -13,7 +13,7 @@ import (
 )
 
 func Say(session string, cid string) {
-	client := cookie.SetCookie(session)
+	client := cookie.SetCookie(session, "say")
 	reader := bufio.NewReader(os.Stdin)
 	for true {
 		fmt.Printf("name : ")
