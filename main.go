@@ -59,7 +59,7 @@ func main() {
 
 	var options int
 	fmt.Scanf("%d", &options)
-	Connection.Reconnect(session, cid, "re")
+	Connection.Connect(session, cid, "re")
 	message.Say(session, cid)
 
 }

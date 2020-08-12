@@ -10,11 +10,11 @@ import (
 	cookie "github.com/akshayaky/gICCa/cookie"
 )
 
-func Reconnect(session string, cid string, ReorDis string) {
+//Connect disconnects or reconnects from a connection whose ID is given
+func Connect(session string, cid string, ReorDis string) {
 	client := cookie.SetCookie(session, ReorDis+"connect")
 	body := strings.NewReader(`cid=` + cid + `&session=` + session)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/"+ReorDis+"connect", body)
-	//fmt.Println(body)
 	if err != nil {
 		fmt.Println("error sending the request :  ", err)
 	}
@@ -22,7 +22,7 @@ func Reconnect(session string, cid string, ReorDis string) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		// handle err
+		panic(err)
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -30,6 +30,5 @@ func Reconnect(session string, cid string, ReorDis string) {
 		log.Fatal(err)
 	}
 	_ = bodyBytes
-	//fmt.Println(string(bodyBytes))
 
 }
