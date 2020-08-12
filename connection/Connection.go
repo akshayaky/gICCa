@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	cookie "github.com/cookie"
+	cookie "github.com/akshayaky/gICCa/cookie"
 )
 
 func Reconnect(session string, cid string, ReorDis string) {

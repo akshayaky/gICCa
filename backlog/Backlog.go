@@ -85,7 +85,7 @@ func GetBacklog(streamid string, session string) string {
 
 }
 
-func EndpointConnection(session string) {
+func EndpointConnection(session string) string {
 
 	jar, _ := cookiejar.New(nil)
 
@@ -130,11 +130,11 @@ func EndpointConnection(session string) {
 		streamid := lines[ind+11 : ind+43]
 		//fmt.Println(streamid)
 
-		cid := getBacklog(streamid, session)
+		cid := GetBacklog(streamid, session)
 		return cid
 		break
 
 	}
 	defer resp.Body.Close()
-
+	return ""
 }

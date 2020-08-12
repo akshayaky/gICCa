@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	cookie "github.com/cookie"
+	cookie "github.com/akshayaky/gICCa/cookie"
 )
 
 func Say(session string, cid string) {

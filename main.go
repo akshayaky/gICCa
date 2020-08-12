@@ -5,11 +5,11 @@ import (
 	"io/ioutil"
 	"os"
 
-	backlog "github.com/backlog"
-	Connection "github.com/connection"
+	backlog "github.com/akshayaky/gICCa/backlog"
+	Connection "github.com/akshayaky/gICCa/connection"
+	login "github.com/akshayaky/gICCa/login"
+	"github.com/akshayaky/gICCa/message"
 	"github.com/inancgumus/screen"
-	login "github.com/login"
-	message "github.com/message"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -52,15 +52,14 @@ func main() {
 	}
 	session := string(dat)
 
-	name, cid := backlog.EndpointConnection(session)
-	name, cid = backlog.EndpointConnection(session)
-	fmt.Println(name)
+	cid := backlog.EndpointConnection(session)
+	cid = backlog.EndpointConnection(session)
 	fmt.Println(cid)
 	fmt.Println(len(cid))
 
 	var options int
 	fmt.Scanf("%d", &options)
-	Connection.Reconnect(session, cid[options], "re")
-	message.Say(session, cid[options])
+	Connection.Reconnect(session, cid, "re")
+	message.Say(session, cid)
 
 }
