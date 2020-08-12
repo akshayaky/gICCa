@@ -5,15 +5,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	cookie "github.com/akshayaky/gICCa/cookie"
 )
 
 //Connect disconnects or reconnects from a connection whose ID is given
-func Connect(session string, cid string, ReorDis string) {
+func Connect(session string, cid int, ReorDis string) {
 	client := cookie.SetCookie(session, ReorDis+"connect")
-	body := strings.NewReader(`cid=` + cid + `&session=` + session)
+	body := strings.NewReader(`cid=` + strconv.Itoa(cid) + `&session=` + session)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/"+ReorDis+"connect", body)
 	if err != nil {
 		fmt.Println("error sending the request :  ", err)

@@ -4,37 +4,58 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strings"
+
+	cookie "github.com/akshayaky/gICCa/cookie"
+	"github.com/akshayaky/gICCa/message"
 )
 
-func GetBacklog(streamid string, session string) string {
-	jar, _ := cookiejar.New(nil)
+//BufferMsg is an event received when a message is send by someone to the user
+type BufferMsg struct {
+	Cid      int    `json:"cid"`
+	Bid      int    `json:"bid"`
+	Type     string `json:"type"`
+	Chan     string `json:"chan"`
+	Eid      int    `json:"eid"`
+	Msg      string `json:"msg"`
+	From     string `json:"from"`
+	StreamID string `json:"streamid"`
+}
 
-	var cookies []*http.Cookie
+//Makeserver is a response when connecting to a network
+type Makeserver struct {
+	Cid          int    `json:"cid"`
+	Type         string `json:"type"`
+	Hostname     string `json:"hostname"`
+	Port         int    `json:"port"`
+	Ssl          bool   `json:"ssl"`
+	Name         string `json:"name"`
+	Nick         string `json:"nick"`
+	Realname     string `json:"realname"`
+	ServerPass   string `json:"server_pass"`
+	NickservPass string `json:"nickserv_pass"`
+	JoinCommands string `json:"join_commands"`
+	//Ignores       string or bool `json:"ignores"`
+	Away        string          `json:"away"`
+	Status      string          `json:"status"`
+	FailInfo    json.RawMessage `json:"fail_info"`
+	Ircserver   string          `json:"ircserver"`
+	IdentPrefix string          `json:"ident_prefix"`
+	User        string          `json:"user"`
+	Userhost    string          `json:"userhost"`
+	Usermask    string          `json:"usermask"`
+	NumBuffers  int             `json:"num_buffers"`
+	Prefs       json.RawMessage `json:"prefs"`
 
-	firstCookie := &http.Cookie{
-		Name:   "session",
-		Value:  session,
-		Path:   "/",
-		Domain: ".irccloud.com",
-	}
+	// /Disconnected string `json:"disconnected"`
+}
 
-	cookies = append(cookies, firstCookie)
-
-	// URL for cookies to remember. i.e reply when encounter this URL
-	cookieURL, _ := url.Parse("http://www.irccloud.com/chat/backlog/" + streamid)
-
-	jar.SetCookies(cookieURL, cookies)
-
-	//setup our client based on the cookies data
-	client := &http.Client{
-		Jar: jar,
-	}
+//GetBacklog gets the backlog and assigns them to appropriate structs
+func GetBacklog(streamid string, session string) ([10]string, [10]int) {
+	client := cookie.SetCookie(session, "backlog/"+streamid)
 
 	urlData := url.Values{}
 	urlData.Set("session", session)
@@ -50,68 +71,43 @@ func GetBacklog(streamid string, session string) string {
 		fmt.Println(err)
 	}
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	bodyBytes := []Makeserver{}
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&bodyBytes)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bodyString := string(bodyBytes)
-	scanner := bufio.NewScanner(strings.NewReader(bodyString))
-	k := 1
-	for scanner.Scan() {
-		backlog, _ := json.Marshal(scanner.Text()[0 : len(scanner.Text())-1])
-		strback := string(backlog)
-		strback = strings.Replace(strback, "\\", "", -1)
+	var name [10]string
+	var cid [10]int
 
-		k = k + 1
-		if strings.Contains(strback, "cid") {
+	i := 0
 
-			//fmt.Println(strback)
-			ind := strings.Index(strback, "cid")
-			cid := strback[ind+5 : ind+12]
-			fmt.Println(cid)
-			//_ = cid
-			return cid
+	for _, event := range bodyBytes {
+		if event.Type == "makeserver" {
+
+			cid[i] = event.Cid
+			name[i] = event.Name
+			i++
 		}
-
-		//fmt.Println(strback)
+		if i == 4 {
+			break
+		}
 	}
 
-	//	lines := string(line)
-	//	print(lines)
-	//	print("\n")
-
-	//}
-	return "nil"
+	return name, cid
 
 }
 
-func EndpointConnection(session string) string {
+//EndpointConnection connects to the stream
+func EndpointConnection(session string) ([10]int, [10]string, *bufio.Reader) {
 
-	jar, _ := cookiejar.New(nil)
-
-	var cookies []*http.Cookie
-
-	firstCookie := &http.Cookie{
-		Name:   "session",
-		Value:  session,
-		Path:   "/",
-		Domain: ".irccloud.com",
-	}
-
-	cookies = append(cookies, firstCookie)
-
-	cookieURL, _ := url.Parse("https://www.irccloud.com/chat/stream")
-
-	jar.SetCookies(cookieURL, cookies)
-
-	client := &http.Client{
-		Jar: jar,
-	}
+	client := cookie.SetCookie(session, "stream")
 
 	urlData := url.Values{}
 	urlData.Set("session", session)
 
-	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/stream", strings.NewReader(urlData.Encode()))
+	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/stream",
+		strings.NewReader(urlData.Encode()))
 	if err != nil {
 		fmt.Println("error sending the request :  ", err)
 	}
@@ -119,22 +115,107 @@ func EndpointConnection(session string) string {
 
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Println("Error is here")
 		fmt.Println(err)
 	}
 	reader := bufio.NewReader(resp.Body)
+	defer resp.Body.Close()
 
+	var cid [10]int
+	var name [10]string
+
+	name, cid = GetNameAndCid(session, reader)
+
+	return cid, name, reader
+}
+
+/*
+GetNameAndCid returns the connnection id (CID)
+and the corresponding name of the connection
+*/
+func GetNameAndCid(session string, reader *bufio.Reader) ([10]string, [10]int) {
+
+	line, _ := reader.ReadBytes('\n')
+
+	var msg BufferMsg
+
+	if err := json.Unmarshal(line, &msg); err != nil {
+		fmt.Println("I found the error here")
+		panic(err)
+	}
+
+	name, cid := GetBacklog(msg.StreamID, session)
+
+	fmt.Println(cid, name)
+
+	var option int
+	fmt.Printf("Connection Index : ")
+	fmt.Scanln(&option)
+
+	Decider(session, reader, cid[option])
+
+	return name, cid
+
+}
+
+/*
+ViewMessages reads the stream of bytes
+and displays the messages in the corresponding group or nick
+*/
+func ViewMessages(session string, reader *bufio.Reader, toName string, chan2 chan string) {
+
+	// only viewing messages in a chat
 	for {
-		line, _ := reader.ReadBytes('\n')
-		lines := string(line)
-		ind := strings.Index(lines, "streamid")
-		streamid := lines[ind+11 : ind+43]
-		//fmt.Println(streamid)
 
-		cid := GetBacklog(streamid, session)
-		return cid
-		break
+		line, _ := reader.ReadBytes('\n')
+
+		var msg BufferMsg
+
+		if err := json.Unmarshal(line, &msg); err != nil {
+			fmt.Println("I found the error here")
+			panic(err)
+		}
+
+		if msg.Type == "buffer_msg" {
+			if msg.From == toName {
+				fmt.Printf(toName + " : ")
+				fmt.Println(msg.Msg)
+
+			} else if msg.Chan == toName {
+				fmt.Printf(msg.From + " : ")
+				fmt.Println(msg.Msg)
+				chan2 <- msg.Msg
+			}
+		}
 
 	}
-	defer resp.Body.Close()
-	return ""
+}
+
+/*
+Decider function uses concurrency to decided which
+function to execute, viewMessages or Say1.
+*/
+func Decider(session string, reader *bufio.Reader, cid int) {
+
+	chan1 := make(chan string)
+	chan2 := make(chan string)
+
+	var toName string
+
+	fmt.Printf("\n\nEnter the Name : ")
+	fmt.Scanln(&toName)
+	fmt.Println(toName)
+
+	//these two functions will run concurrently
+	go message.SendMessages(session, cid, toName, chan1)
+	go ViewMessages(session, reader, toName, chan2)
+
+	for {
+		select {
+		case <-chan1:
+
+		case <-chan2:
+
+		}
+	}
 }
