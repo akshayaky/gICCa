@@ -9,49 +9,10 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/akshayaky/gICCa/concurrent"
 	cookie "github.com/akshayaky/gICCa/cookie"
 	"github.com/akshayaky/gICCa/message"
 )
-
-//BufferMsg is an event received when a message is send by someone to the user
-type BufferMsg struct {
-	Cid      int    `json:"cid"`
-	Bid      int    `json:"bid"`
-	Type     string `json:"type"`
-	Chan     string `json:"chan"`
-	Eid      int    `json:"eid"`
-	Msg      string `json:"msg"`
-	From     string `json:"from"`
-	StreamID string `json:"streamid"`
-}
-
-//Makeserver is a response when connecting to a network
-type Makeserver struct {
-	Cid          int    `json:"cid"`
-	Type         string `json:"type"`
-	Hostname     string `json:"hostname"`
-	Port         int    `json:"port"`
-	Ssl          bool   `json:"ssl"`
-	Name         string `json:"name"`
-	Nick         string `json:"nick"`
-	Realname     string `json:"realname"`
-	ServerPass   string `json:"server_pass"`
-	NickservPass string `json:"nickserv_pass"`
-	JoinCommands string `json:"join_commands"`
-	//Ignores       string or bool `json:"ignores"`
-	Away        string          `json:"away"`
-	Status      string          `json:"status"`
-	FailInfo    json.RawMessage `json:"fail_info"`
-	Ircserver   string          `json:"ircserver"`
-	IdentPrefix string          `json:"ident_prefix"`
-	User        string          `json:"user"`
-	Userhost    string          `json:"userhost"`
-	Usermask    string          `json:"usermask"`
-	NumBuffers  int             `json:"num_buffers"`
-	Prefs       json.RawMessage `json:"prefs"`
-
-	// /Disconnected string `json:"disconnected"`
-}
 
 //GetBacklog gets the backlog and assigns them to appropriate structs
 func GetBacklog(streamid string, session string) ([10]string, [10]int) {
@@ -71,7 +32,7 @@ func GetBacklog(streamid string, session string) ([10]string, [10]int) {
 		fmt.Println(err)
 	}
 
-	bodyBytes := []Makeserver{}
+	bodyBytes := []message.Makeserver{}
 	decoder := json.NewDecoder(resp.Body)
 	err = decoder.Decode(&bodyBytes)
 	if err != nil {
@@ -137,7 +98,7 @@ func GetNameAndCid(session string, reader *bufio.Reader) ([10]string, [10]int) {
 
 	line, _ := reader.ReadBytes('\n')
 
-	var msg BufferMsg
+	var msg message.BufferMsg
 
 	if err := json.Unmarshal(line, &msg); err != nil {
 		fmt.Println("I found the error here")
@@ -152,70 +113,8 @@ func GetNameAndCid(session string, reader *bufio.Reader) ([10]string, [10]int) {
 	fmt.Printf("Connection Index : ")
 	fmt.Scanln(&option)
 
-	Decider(session, reader, cid[option])
+	concurrent.Decider(session, reader, cid[option])
 
 	return name, cid
 
-}
-
-/*
-ViewMessages reads the stream of bytes
-and displays the messages in the corresponding group or nick
-*/
-func ViewMessages(session string, reader *bufio.Reader, toName string, chan2 chan string) {
-
-	// only viewing messages in a chat
-	for {
-
-		line, _ := reader.ReadBytes('\n')
-
-		var msg BufferMsg
-
-		if err := json.Unmarshal(line, &msg); err != nil {
-			fmt.Println("I found the error here")
-			panic(err)
-		}
-
-		if msg.Type == "buffer_msg" {
-			if msg.From == toName {
-				fmt.Printf(toName + " : ")
-				fmt.Println(msg.Msg)
-
-			} else if msg.Chan == toName {
-				fmt.Printf(msg.From + " : ")
-				fmt.Println(msg.Msg)
-				chan2 <- msg.Msg
-			}
-		}
-
-	}
-}
-
-/*
-Decider function uses concurrency to decided which
-function to execute, viewMessages or Say1.
-*/
-func Decider(session string, reader *bufio.Reader, cid int) {
-
-	chan1 := make(chan string)
-	chan2 := make(chan string)
-
-	var toName string
-
-	fmt.Printf("\n\nEnter the Name : ")
-	fmt.Scanln(&toName)
-	fmt.Println(toName)
-
-	//these two functions will run concurrently
-	go message.SendMessages(session, cid, toName, chan1)
-	go ViewMessages(session, reader, toName, chan2)
-
-	for {
-		select {
-		case <-chan1:
-
-		case <-chan2:
-
-		}
-	}
 }
