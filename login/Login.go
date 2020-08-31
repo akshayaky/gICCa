@@ -6,12 +6,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
+	"github.com/inancgumus/screen"
 	"github.com/manifoldco/promptui"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
-func GetAuthToken() string { //function tp get the Auth token
+//getAuthToken returns Auth token
+func getAuthToken() string {
 
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/auth-formtoken", nil)
 	if err != nil {
@@ -42,7 +46,8 @@ func GetAuthToken() string { //function tp get the Auth token
 
 }
 
-func GetSessionId(tok1 string, email string, pass string) string { // function to get the session id from the Auth token
+//getSessionID returns session id from the Auth token
+func getSessionID(tok1 string, email string, pass string) string {
 	body := strings.NewReader(`email=` + email + `&password=` + pass + `&token=` + tok1)
 	req, err := http.NewRequest("POST", "https://www.irccloud.com/chat/login", body)
 	if err != nil {
@@ -75,7 +80,8 @@ func GetSessionId(tok1 string, email string, pass string) string { // function t
 
 }
 
-func Val(lab string) string { //function to validate the given input
+//val  validates the given input
+func val(lab string) string {
 	validate := func(input string) error {
 
 		if input == "" {
@@ -97,4 +103,46 @@ func Val(lab string) string { //function to validate the given input
 	}
 
 	return result
+}
+
+//Login returns session ID. Checks session.txt for the session key,
+//if not found gets auth key and session ID and then stores and returns
+func Login() string {
+	dat, _ := ioutil.ReadFile("session.txt")
+	screen.Clear()
+	screen.MoveTopLeft()
+	var session string
+	if dat == nil {
+
+		k := "Username"
+		email := val(k)
+		fmt.Printf("PassWord : ")
+		password, err := terminal.ReadPassword(0)
+		if err != nil {
+			fmt.Println("There was an error : ", err)
+			os.Exit(0)
+		}
+		tok := getAuthToken()
+		tok1 := tok[0 : len(tok)-1]
+
+		session = getSessionID(string(tok1), email, string(password))
+		if session == "nil" {
+			fmt.Println("Error occured")
+			os.Exit(1)
+		}
+		f, err := os.Create("session.txt")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
+		_, err = f.WriteString(session)
+		if err != nil {
+			fmt.Println(err)
+			f.Close()
+			os.Exit(3)
+		}
+
+		return session
+	}
+	return string(dat)
 }
