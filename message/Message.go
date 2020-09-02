@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cookie "github.com/akshayaky/gICCa/cookie"
+	"github.com/jroimartin/gocui"
 )
 
 //BufferMsg is an event received when a message is send by someone to the user
@@ -53,16 +54,14 @@ type Makeserver struct {
 }
 
 //SendMessages sends messages to the specified nick or group
-func SendMessages(session string, cid int, name string, chan1 chan string) {
-	client := cookie.SetCookie(session, "say")
-	reader := bufio.NewReader(os.Stdin)
-	Cid := strconv.Itoa(cid)
-	var msg string
-	var reciever string
-	hash := ""
-	for {
-		msg, _ = reader.ReadString('\n')
+func SendMessages(session string, cid int, name string) func(string) {
 
+	client := cookie.SetCookie(session, "say")
+	Cid := strconv.Itoa(cid)
+	var reciever string
+	var hash string
+	Send := func(msg string) {
+		hash = ""
 		if name[0] == '#' {
 			hash = "%23"
 			reciever = name[1:len(name)]
@@ -81,8 +80,8 @@ func SendMessages(session string, cid int, name string, chan1 chan string) {
 			fmt.Println(err)
 		}
 		defer resp.Body.Close()
-		chan1 <- msg
 	}
+	return Send
 
 }
 
@@ -90,14 +89,16 @@ func SendMessages(session string, cid int, name string, chan1 chan string) {
 ViewMessages reads the stream of bytes
 and displays the messages in the corresponding group or nick
 */
-func ViewMessages(session string, reader *bufio.Reader, toName string, chan2 chan string) {
+func ViewMessages(session string, reader *bufio.Reader, toName string, g *gocui.Gui, chan2 chan string) {
 
-	// only viewing messages in a chat
+	var msg BufferMsg
+	var last string
+	last = ""
+
+	var t time.Time
 	for {
 
 		line, _ := reader.ReadBytes('\n')
-
-		var msg BufferMsg
 
 		if err := json.Unmarshal(line, &msg); err != nil {
 			fmt.Println("I found the error here")
@@ -105,15 +106,18 @@ func ViewMessages(session string, reader *bufio.Reader, toName string, chan2 cha
 		}
 
 		if msg.Type == "buffer_msg" {
-			if msg.From == toName {
-				fmt.Printf(toName + " : ")
-				fmt.Println(msg.Msg)
+			chan2 <- msg.Msg
+			g.Update(func(g *gocui.Gui) error {
+				v, _ := g.View("mainView")
+				if msg.From != last {
+					fmt.Fprintln(v, fmt.Sprintf("\n\033[35;2m<%s>\033[0m", msg.From))
+					last = msg.From
+				}
+				t = time.Now()
+				fmt.Fprintln(v, fmt.Sprintf("\033[39;2m(%s)\033[34;2m%s\033[0m", t.Format("15:04:05"), msg.Msg))
+				return nil
+			})
 
-			} else if msg.Chan == toName {
-				fmt.Printf(msg.From + " : ")
-				fmt.Println(msg.Msg)
-				chan2 <- msg.Msg
-			}
 		}
 
 	}

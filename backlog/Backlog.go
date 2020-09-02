@@ -12,6 +12,7 @@ import (
 	"github.com/akshayaky/gICCa/concurrent"
 	cookie "github.com/akshayaky/gICCa/cookie"
 	"github.com/akshayaky/gICCa/message"
+	"github.com/jroimartin/gocui"
 )
 
 //GetBacklog gets the backlog and assigns them to appropriate structs
@@ -60,7 +61,7 @@ func GetBacklog(streamid string, session string) ([10]string, [10]int) {
 }
 
 //EndpointConnection connects to the stream
-func EndpointConnection(session string) ([10]int, [10]string, *bufio.Reader) {
+func EndpointConnection(session string, g *gocui.Gui) ([10]int, [10]string, *bufio.Reader) {
 
 	client := cookie.SetCookie(session, "stream")
 
@@ -85,7 +86,7 @@ func EndpointConnection(session string) ([10]int, [10]string, *bufio.Reader) {
 	var cid [10]int
 	var name [10]string
 
-	name, cid = GetNameAndCid(session, reader)
+	name, cid = GetNameAndCid(session, g, reader)
 
 	return cid, name, reader
 }
@@ -94,7 +95,7 @@ func EndpointConnection(session string) ([10]int, [10]string, *bufio.Reader) {
 GetNameAndCid returns the connnection id (CID)
 and the corresponding name of the connection
 */
-func GetNameAndCid(session string, reader *bufio.Reader) ([10]string, [10]int) {
+func GetNameAndCid(session string, g *gocui.Gui, reader *bufio.Reader) ([10]string, [10]int) {
 
 	line, _ := reader.ReadBytes('\n')
 
@@ -107,13 +108,13 @@ func GetNameAndCid(session string, reader *bufio.Reader) ([10]string, [10]int) {
 
 	name, cid := GetBacklog(msg.StreamID, session)
 
-	fmt.Println(cid, name)
+	//fmt.Println(cid, name)
 
-	var option int
-	fmt.Printf("Connection Index : ")
-	fmt.Scanln(&option)
+	//var option int
+	//fmt.Printf("Connection Index : ")
+	//fmt.Scanln(&option)
 
-	concurrent.Decider(session, reader, cid[option])
+	concurrent.Decider(session, g, reader, cid[3])
 
 	return name, cid
 
