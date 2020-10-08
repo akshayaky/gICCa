@@ -109,12 +109,13 @@ func ViewMessages(session string, reader *bufio.Reader, toName string, g *gocui.
 			chan2 <- msg.Msg
 			g.Update(func(g *gocui.Gui) error {
 				v, _ := g.View("mainView")
-				if msg.From != last {
-					fmt.Fprintln(v, fmt.Sprintf("\n\033[35;2m<%s>\033[0m", msg.From))
-					last = msg.From
-				}
-				t = time.Now()
-				fmt.Fprintln(v, fmt.Sprintf("\033[39;2m(%s)\033[34;2m%s\033[0m", t.Format("15:04:05"), msg.Msg))
+				if msg.Chan == toName {
+					if msg.From != last {
+					        fmt.Fprintln(v, fmt.Sprintf("\n\033[35;2m<%s>\033[0m", msg.From))
+					        last = msg.From
+					}
+					t = time.Now()
+					fmt.Fprintln(v, fmt.Sprintf("\033[39;2m(%s)\033[34;2m%s\033[0m", t.Format("15:04:05"), msg.Msg))
 				return nil
 			})
 
