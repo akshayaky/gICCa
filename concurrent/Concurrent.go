@@ -12,31 +12,26 @@ import (
 Decider function uses concurrency to decided which
 function to execute, viewMessages or Say1.
 */
-func Decider(session string, g *gocui.Gui, reader *bufio.Reader, cid int) {
+func Decider(session string, g *gocui.Gui, reader *bufio.Reader, servers [10]message.Makeserver) {
 
 	chan1 := make(chan string)
 	chan2 := make(chan string)
 
-	var toName string
+	var ToName string
+	ToName = "#amfoss-test"
+	ui.ChangeTitle(&ToName, "mainView", g)
+	Send := message.SendMessages(session, servers[3].Cid, g)
 
-	// fmt.Printf("\n\nEnter the Name : ")
-	// fmt.Scanln(&toName)
-	// fmt.Println(toName)
-	toName = "chan or nick"
-	ui.ChangeTitle(toName, "mainView", g)
-	Send := message.SendMessages(session, cid, toName)
 	//these two functions will run concurrently
-	// go message.SendMessages(session, cid, toName, chan1)
-	go message.ViewMessages(session, reader, toName, g, chan1)
-	go ui.Control(g, chan2)
-
+	go ui.Control(g, chan2, &ToName)
+	go message.ViewMessages(session, reader, &ToName, g, chan1)
 	var msg string
 	for {
 		select {
 		case <-chan1:
 
 		case msg = <-chan2:
-			Send(msg)
+			Send(msg, &ToName)
 		}
 	}
 }

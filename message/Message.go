@@ -29,6 +29,7 @@ type BufferMsg struct {
 type Makeserver struct {
 	Cid          int    `json:"cid"`
 	Type         string `json:"type"`
+	Chan         string `json:"chan"`
 	Hostname     string `json:"hostname"`
 	Port         int    `json:"port"`
 	Ssl          bool   `json:"ssl"`
@@ -53,15 +54,65 @@ type Makeserver struct {
 	// /Disconnected string `json:"disconnected"`
 }
 
+//Member is the information about the members in a channel
+type Member struct {
+	Nick      string `json:"nick"`
+	Realname  string `json:"realname"`
+	Ircserver string `json:"ircserver"`
+	Mode      string `json:"mode"`
+	Hopcount  int    `json:"hopcount"`
+	// Away        bool   `json:"away"`
+	IdentPrefix string `json:"ident_prefix"`
+	User        string `json:"user"`
+	Userhost    string `json:"userhost"`
+	Usermask    string `json:"usermask"`
+}
+
+//Topic is the information about the topic of a channel
+type Topic struct {
+	Text        string `json:"text"`
+	Time        int    `json:"time"`
+	Nick        string `json:"nick"`
+	IdentPrefix string `json:"ident_prefix"`
+	User        string `json:"user"`
+	Userhost    string `json:"userhost"`
+	Usermask    string `json:"usermask"`
+}
+
+//ChannelInit is the information about a joined channel
+type ChannelInit struct {
+	Cid     int      `json:"cid"`
+	Bid     int      `json:"bid"`
+	Type    string   `json:"type"`
+	Chan    string   `json:"chan"`
+	Members []Member `json:"members"`
+	Topics  Topic    `json:"topic"`
+	Mode    string   `json:"mode"`
+	URL     string   `json:"url"`
+}
+
+//Backlog is backlog
+type Backlog struct {
+	Cid     int      `json:"cid"`
+	Bid     int      `json:"bid"`
+	Type    string   `json:"type"`
+	Chan    string   `json:"chan"`
+	Name    string   `json:"name"`
+	Members []Member `json:"members"`
+	Topics  Topic    `json:"topic"`
+}
+
 //SendMessages sends messages to the specified nick or group
-func SendMessages(session string, cid int, name string) func(string) {
+func SendMessages(session string, cid int, g *gocui.Gui) func(string, *string) {
 
 	client := cookie.SetCookie(session, "say")
 	Cid := strconv.Itoa(cid)
 	var reciever string
 	var hash string
-	Send := func(msg string) {
+	var name string
+	Send := func(msg string, toName *string) {
 		hash = ""
+		name = *toName
 		if name[0] == '#' {
 			hash = "%23"
 			reciever = name[1:len(name)]
@@ -89,12 +140,11 @@ func SendMessages(session string, cid int, name string) func(string) {
 ViewMessages reads the stream of bytes
 and displays the messages in the corresponding group or nick
 */
-func ViewMessages(session string, reader *bufio.Reader, toName string, g *gocui.Gui, chan2 chan string) {
+func ViewMessages(session string, reader *bufio.Reader, toName *string, g *gocui.Gui, chan2 chan string) {
 
 	var msg BufferMsg
 	var last string
 	last = ""
-
 	var t time.Time
 	for {
 
@@ -109,13 +159,15 @@ func ViewMessages(session string, reader *bufio.Reader, toName string, g *gocui.
 			chan2 <- msg.Msg
 			g.Update(func(g *gocui.Gui) error {
 				v, _ := g.View("mainView")
-				if msg.Chan == toName {
+				v.Title = *toName
+				if msg.Chan == *toName {
 					if msg.From != last {
-					        fmt.Fprintln(v, fmt.Sprintf("\n\033[35;2m<%s>\033[0m", msg.From))
-					        last = msg.From
+						fmt.Fprintln(v, fmt.Sprintf("\n\033[35;2m<%s>\033[0m", msg.From))
+						last = msg.From
 					}
 					t = time.Now()
 					fmt.Fprintln(v, fmt.Sprintf("\033[39;2m(%s)\033[34;2m%s\033[0m", t.Format("15:04:05"), msg.Msg))
+				}
 				return nil
 			})
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -16,7 +17,7 @@ import (
 )
 
 //GetBacklog gets the backlog and assigns them to appropriate structs
-func GetBacklog(streamid string, session string) ([10]string, [10]int) {
+func GetBacklog(streamid string, session string) io.ReadCloser {
 	client := cookie.SetCookie(session, "backlog/"+streamid)
 
 	urlData := url.Values{}
@@ -32,36 +33,11 @@ func GetBacklog(streamid string, session string) ([10]string, [10]int) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	bodyBytes := []message.Makeserver{}
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&bodyBytes)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var name [10]string
-	var cid [10]int
-
-	i := 0
-
-	for _, event := range bodyBytes {
-		if event.Type == "makeserver" {
-
-			cid[i] = event.Cid
-			name[i] = event.Name
-			i++
-		}
-		if i == 4 {
-			break
-		}
-	}
-
-	return name, cid
-
+	return resp.Body
 }
 
 //EndpointConnection connects to the stream
-func EndpointConnection(session string, g *gocui.Gui) ([10]int, [10]string, *bufio.Reader) {
+func EndpointConnection(session string, g *gocui.Gui) {
 
 	client := cookie.SetCookie(session, "stream")
 
@@ -83,19 +59,52 @@ func EndpointConnection(session string, g *gocui.Gui) ([10]int, [10]string, *buf
 	reader := bufio.NewReader(resp.Body)
 	defer resp.Body.Close()
 
-	var cid [10]int
-	var name [10]string
+	GetAllData(session, g, reader)
+}
 
-	name, cid = GetNameAndCid(session, g, reader)
+func processBacklog(streamID string, session string) ([10]message.ChannelInit, [10]message.Makeserver) {
 
-	return cid, name, reader
+	var channels [10]message.ChannelInit
+	var servers [10]message.Makeserver
+
+	body := GetBacklog(streamID, session)
+	bodyBytes := []message.Backlog{}
+	err := json.NewDecoder(body).Decode(&bodyBytes)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(err)
+	}
+
+	i := 0
+	j := 0
+	for _, event := range bodyBytes {
+		// fmt.Println(event)
+
+		if event.Type == "channel_init" {
+
+			channels[i].Cid = event.Cid
+			channels[i].Chan = event.Chan
+			channels[i].Members = event.Members
+			channels[i].Topics = event.Topics
+			// fmt.Println(channels[i].Chan + strconv.Itoa(channels[i].Cid))
+			i++
+		} else if event.Type == "makeserver" {
+			// fmt.Println(event.Cid, event.Name)
+			servers[j].Cid = event.Cid
+			servers[j].Name = event.Name
+			j++
+		}
+	}
+	// os.Exit(6)
+	fmt.Println(channels[0].Chan)
+	return channels, servers
 }
 
 /*
-GetNameAndCid returns the connnection id (CID)
+GetAllData returns the connnection id (CID)
 and the corresponding name of the connection
 */
-func GetNameAndCid(session string, g *gocui.Gui, reader *bufio.Reader) ([10]string, [10]int) {
+func GetAllData(session string, g *gocui.Gui, reader *bufio.Reader) {
 
 	line, _ := reader.ReadBytes('\n')
 
@@ -106,16 +115,22 @@ func GetNameAndCid(session string, g *gocui.Gui, reader *bufio.Reader) ([10]stri
 		panic(err)
 	}
 
-	name, cid := GetBacklog(msg.StreamID, session)
+	// fmt.Printf("lknasdvfonasdfjinvfjnfvlglkjre")
+	// name, cid, channels := GetBacklog(msg.StreamID, session)
 
-	//fmt.Println(cid, name)
+	var servers [10]message.Makeserver
+	var channels [10]message.ChannelInit
 
-	//var option int
-	//fmt.Printf("Connection Index : ")
-	//fmt.Scanln(&option)
+	channels, servers = processBacklog(msg.StreamID, session)
 
-	concurrent.Decider(session, g, reader, cid[3])
+	g.Update(func(g *gocui.Gui) error {
+		v, _ := g.View("channels")
+		for _, channel := range channels {
+			fmt.Fprintln(v, fmt.Sprintf("%s", channel.Chan)) //+strconv.Itoa(channel.Cid)))
+		}
+		return nil
+	})
 
-	return name, cid
+	concurrent.Decider(session, g, reader, servers)
 
 }
