@@ -156,7 +156,7 @@ func ViewMessages(session string, reader *bufio.Reader, toName *string, g *gocui
 		}
 
 		if msg.Type == "buffer_msg" {
-			chan2 <- msg.Msg
+
 			g.Update(func(g *gocui.Gui) error {
 				v, _ := g.View("mainView")
 				v.Title = *toName

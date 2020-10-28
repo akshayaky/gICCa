@@ -78,26 +78,48 @@ func getChannel(toName *string) func(g *gocui.Gui, v *gocui.View) error {
 			setCurrentViewOnTop(g, "messageBox")
 			active = 0
 			clearView("mainView", g)
-
 		}
 
 		return nil
 	}
 }
 
-func getText(chan2 chan string) func(g *gocui.Gui, v *gocui.View) error {
+func getMessage(chan2 chan string) func(g *gocui.Gui, v *gocui.View) error {
 	return func(g *gocui.Gui, v *gocui.View) error {
-		if err := v.SetCursor(0, 0); err != nil {
-			return err
+		text := getText(g, v)
+		if text == "" {
+			return nil
 		}
-		if err := v.SetOrigin(0, 0); err != nil {
-			return err
-		}
-		chan2 <- v.Buffer()
+		chan2 <- text
 		v.Clear()
 
 		return nil
 	}
+}
+func findChannel(toName *string) func(g *gocui.Gui, v *gocui.View) error {
+	return func(g *gocui.Gui, v *gocui.View) error {
+		channel := getText(g, v)
+		if channel == "" {
+			return nil
+		}
+		*toName = channel
+		clearView("messageBox", g)
+		return nil
+	}
+}
+
+func getText(g *gocui.Gui, v *gocui.View) string {
+
+	if err := v.SetCursor(0, 0); err != nil {
+		return ""
+	}
+	if err := v.SetOrigin(0, 0); err != nil {
+		return ""
+	}
+	buffer := v.Buffer()
+	// v.Clear()
+	return buffer
+
 }
 
 func layout(g *gocui.Gui) error {
@@ -106,7 +128,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "channels"
+		v.Title = "Channels"
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -117,7 +139,7 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "members"
+		v.Title = "Members"
 		v.Highlight = true
 		v.SelBgColor = gocui.ColorGreen
 		v.SelFgColor = gocui.ColorBlack
@@ -172,9 +194,8 @@ func Control(g *gocui.Gui, chan2 chan string, toName *string) error {
 
 	for {
 		g.SetManagerFunc(layout)
-		if err := g.SetKeybinding("messageBox", gocui.KeyEnter, gocui.ModNone,
-			getText(chan2)); err != nil {
-			return err
+		if err := g.SetKeybinding("messageBox", gocui.KeyEnter, gocui.ModNone, getMessage(chan2)); err != nil {
+			log.Panicln(err)
 		}
 		if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 			log.Panicln(err)
@@ -188,6 +209,18 @@ func Control(g *gocui.Gui, chan2 chan string, toName *string) error {
 		if err := g.SetKeybinding("channels", gocui.KeyEnter, gocui.ModNone, getChannel(toName)); err != nil {
 			log.Panicln(err)
 		}
+		if err := g.SetKeybinding("members", gocui.KeyArrowDown, gocui.ModNone, nextChannel); err != nil {
+			log.Panicln(err)
+		}
+		if err := g.SetKeybinding("members", gocui.KeyArrowUp, gocui.ModNone, previousChannel); err != nil {
+			log.Panicln(err)
+		}
+		if err := g.SetKeybinding("members", gocui.KeyEnter, gocui.ModNone, getChannel(toName)); err != nil {
+			log.Panicln(err)
+		}
+		if err := g.SetKeybinding("messageBox", gocui.KeyCtrlF, gocui.ModNone, getChannel(toName)); err != nil {
+			log.Panicln(err)
+		}
 		if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, nextView); err != nil {
 			log.Panicln(err)
 		}
@@ -196,6 +229,4 @@ func Control(g *gocui.Gui, chan2 chan string, toName *string) error {
 			log.Panicln(err)
 		}
 	}
-	// fmt.Println("Exiting")
-	return nil
 }
